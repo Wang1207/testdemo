@@ -35,8 +35,10 @@ log() { # 日志输出
 }
 
 setup_oracle_env() { # 设置 Oracle 环境变量
-  export ORACLE_HOME="${ORACLE_HOME:-$ORACLE_HOME_DEFAULT}"
-  export NLS_LANG="${NLS_LANG:-$NLS_LANG_DEFAULT}"
+  local oracle_home_input="${1:-$ORACLE_HOME_DEFAULT}"
+  local nls_lang_input="${2:-$NLS_LANG_DEFAULT}"
+  export ORACLE_HOME="${ORACLE_HOME:-$oracle_home_input}"
+  export NLS_LANG="${NLS_LANG:-$nls_lang_input}"
   export PATH="$ORACLE_HOME/bin:$PATH"
   export LD_LIBRARY_PATH="$ORACLE_HOME/lib:${LD_LIBRARY_PATH:-}"
 }
@@ -152,7 +154,7 @@ run_main() { # 主流程
 
   exec > >(tee -a "${LOG_FILE}") 2>&1
 
-  setup_oracle_env
+  setup_oracle_env "$ORACLE_HOME_DEFAULT" "$NLS_LANG_DEFAULT"
   log INFO "Log file: ${LOG_FILE}"
   log INFO "Oracle SID: ${DB_SID}"
   log INFO "SQL file: ${SQL_FILE}"
