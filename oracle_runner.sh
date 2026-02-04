@@ -15,12 +15,13 @@ NLS_LANG_DEFAULT="AMERICAN_AMERICA.AL32UTF8" # 默认字符集
 usage() { # 使用说明
   cat <<'USAGE'
 Usage:
-  oracle_runner.sh [-d|--daemon] <db_user> <db_pass> <db_sid> <sql_file> <work_path>
+  oracle_runner.sh [-d|--daemon] [db_user] [db_pass] [db_sid] [sql_file] [work_path]
 
 Options:
   -d, --daemon   Run in daemon mode (background).
 
 Notes:
+  - Unspecified parameters use defaults defined in the script.
   - sql_file should contain DML (insert/update/delete) for execution.
   - A generated SQL file (with global variables) will be written to work_path.
   - A CSV export will be produced from sql_file if it contains a SELECT.
@@ -131,7 +132,7 @@ parse_args() { # 解析入参
     esac
   done
 
-  if [[ $# -ne 5 ]]; then
+  if [[ $# -gt 5 ]]; then
     usage
     exit 1
   fi
