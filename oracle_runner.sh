@@ -153,7 +153,13 @@ daemonize() { # 守护进程模式
 }
 
 parse_args() { # 解析入参
-  while [[ $# -gt 0 ]]; do
+  local parsed
+  if ! parsed=$(getopt -o dh --long daemon,run,help -n "$0" -- "$@"); then
+    usage
+    exit 1
+  fi
+  eval set -- "${parsed}"
+  while true; do
     case "$1" in
       -d|--daemon)
         DAEMON_MODE="true"
@@ -167,8 +173,13 @@ parse_args() { # 解析入参
         usage
         exit 0
         ;;
-      *)
+      --)
+        shift
         break
+        ;;
+      *)
+        usage
+        exit 1
         ;;
     esac
   done
