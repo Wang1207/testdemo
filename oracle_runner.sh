@@ -44,7 +44,24 @@ setup_oracle_env() { # 设置 Oracle 环境变量
   export LD_LIBRARY_PATH="$ORACLE_HOME/lib:${LD_LIBRARY_PATH:-}"
 }
 
+fetch_db_charset() { # 查询数据库真实字符集
+  sqlplus -s "${DB_USER}/${DB_PASS}@${DB_SID}" <<'SQL'
+set heading off feedback off pagesize 0 verify off echo off
+select value from nls_database_parameters where parameter='NLS_CHARACTERSET';
+exit;
+SQL
+}
+
 normalize_nls_lang() { # 矫正字符集到 UTF-8
+  local db_charset
+  db_charset="$(fetch_db_charset)"
+  db_charset="$(echo "${db_charset}" | tr -d '[:space:]')"
+  if [[ -n "${db_charset}" ]]; then
+    log INFO "Database NLS_CHARACTERSET: ${db_charset}"
+  else
+    log WARN "Unable to query database charset before correction"
+  fi
+
   if [[ "${NLS_LANG}" != *"UTF8" ]]; then
     log WARN "NLS_LANG=${NLS_LANG} not UTF8, correcting to AMERICAN_AMERICA.UTF8"
     export NLS_LANG="AMERICAN_AMERICA.UTF8"
@@ -53,13 +70,7 @@ normalize_nls_lang() { # 矫正字符集到 UTF-8
 
 detect_nls_lang() { # 自动检测数据库字符集并设置 NLS_LANG
   local db_charset
-  db_charset="$(
-    sqlplus -s "${DB_USER}/${DB_PASS}@${DB_SID}" <<'SQL'
-set heading off feedback off pagesize 0 verify off echo off
-select value from nls_database_parameters where parameter='NLS_CHARACTERSET';
-exit;
-SQL
-  )"
+  db_charset="$(fetch_db_charset)"
   db_charset="$(echo "${db_charset}" | tr -d '[:space:]')"
   if [[ -n "${db_charset}" ]]; then
     export NLS_LANG="AMERICAN_AMERICA.${db_charset}"
