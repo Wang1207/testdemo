@@ -11,7 +11,7 @@ INTERNAL_RUN="false" # 内部执行标记
 AUTO_DETECT_NLS="true" # 是否自动检测字符集
 
 ORACLE_HOME_DEFAULT="/opt/oracle" # 默认 ORACLE_HOME
-NLS_LANG_DEFAULT="AMERICAN_AMERICA.AL32UTF8" # 默认字符集
+NLS_LANG_DEFAULT="AMERICAN_AMERICA.UTF8" # 默认字符集
 
 usage() { # 使用说明
   cat <<'USAGE'
@@ -44,6 +44,13 @@ setup_oracle_env() { # 设置 Oracle 环境变量
   export LD_LIBRARY_PATH="$ORACLE_HOME/lib:${LD_LIBRARY_PATH:-}"
 }
 
+normalize_nls_lang() { # 矫正字符集到 UTF-8
+  if [[ "${NLS_LANG}" != *"UTF8" ]]; then
+    log WARN "NLS_LANG=${NLS_LANG} not UTF8, correcting to AMERICAN_AMERICA.UTF8"
+    export NLS_LANG="AMERICAN_AMERICA.UTF8"
+  fi
+}
+
 detect_nls_lang() { # 自动检测数据库字符集并设置 NLS_LANG
   local db_charset
   db_charset="$(
@@ -57,8 +64,10 @@ SQL
   if [[ -n "${db_charset}" ]]; then
     export NLS_LANG="AMERICAN_AMERICA.${db_charset}"
     log INFO "Detected NLS_CHARACTERSET: ${db_charset}, set NLS_LANG=${NLS_LANG}"
+    normalize_nls_lang
   else
     log WARN "Failed to detect NLS_CHARACTERSET, keep NLS_LANG=${NLS_LANG}"
+    normalize_nls_lang
   fi
 }
 
@@ -176,6 +185,8 @@ run_main() { # 主流程
   setup_oracle_env "$ORACLE_HOME_DEFAULT" "$NLS_LANG_DEFAULT"
   if [[ "${AUTO_DETECT_NLS}" == "true" ]]; then
     detect_nls_lang
+  else
+    normalize_nls_lang
   fi
   log INFO "Log file: ${LOG_FILE}"
   log INFO "Oracle SID: ${DB_SID}"
