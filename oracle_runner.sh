@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_USER=""
-DB_PASS=""
-DB_SID=""
-SQL_FILE=""
-WORK_PATH=""
-DAEMON_MODE="false"
-INTERNAL_RUN="false"
+DB_USER="" # 数据库用户
+DB_PASS="" # 数据库密码
+DB_SID="" # 数据库 SID/服务名
+SQL_FILE="" # SQL 文件路径
+WORK_PATH="" # 工作路径
+DAEMON_MODE="false" # 是否守护进程模式
+INTERNAL_RUN="false" # 内部执行标记
 
-ORACLE_HOME_DEFAULT="/opt/oracle"
-NLS_LANG_DEFAULT="AMERICAN_AMERICA.AL32UTF8"
+ORACLE_HOME_DEFAULT="/opt/oracle" # 默认 ORACLE_HOME
+NLS_LANG_DEFAULT="AMERICAN_AMERICA.AL32UTF8" # 默认字符集
 
-usage() {
+usage() { # 使用说明
   cat <<'USAGE'
 Usage:
   oracle_runner.sh [-d|--daemon] <db_user> <db_pass> <db_sid> <sql_file> <work_path>
@@ -27,20 +27,20 @@ Notes:
 USAGE
 }
 
-log() {
+log() { # 日志输出
   local level="$1"
   shift
   printf '[%s] [%s] %s\n' "$(date '+%F %T')" "$level" "$*"
 }
 
-setup_oracle_env() {
+setup_oracle_env() { # 设置 Oracle 环境变量
   export ORACLE_HOME="${ORACLE_HOME:-$ORACLE_HOME_DEFAULT}"
   export NLS_LANG="${NLS_LANG:-$NLS_LANG_DEFAULT}"
   export PATH="$ORACLE_HOME/bin:$PATH"
   export LD_LIBRARY_PATH="$ORACLE_HOME/lib:${LD_LIBRARY_PATH:-}"
 }
 
-check_connection() {
+check_connection() { # 账号密码校验
   log INFO "Checking database connection for user: ${DB_USER}"
   sqlplus -s "${DB_USER}/${DB_PASS}@${DB_SID}" <<'SQL'
 whenever sqlerror exit failure rollback
@@ -50,7 +50,7 @@ exit;
 SQL
 }
 
-generate_sql() {
+generate_sql() { # 生成带全局变量的 SQL 文件
   local ts
   ts="$(date '+%Y%m%d%H%M%S')"
   GENERATED_SQL_FILE="${WORK_PATH}/generated_${DB_USER}_${ts}.sql"
@@ -76,7 +76,7 @@ SQL
   log INFO "Generated SQL file: ${GENERATED_SQL_FILE}"
 }
 
-run_dml() {
+run_dml() { # 执行 DML，失败回滚
   log INFO "Running DML from: ${SQL_FILE}"
   sqlplus -s "${DB_USER}/${DB_PASS}@${DB_SID}" <<SQL
 whenever sqlerror exit failure rollback
@@ -87,7 +87,7 @@ exit;
 SQL
 }
 
-export_csv() {
+export_csv() { # 根据 SQL 导出 CSV（含表头）
   local csv_file
   csv_file="${WORK_PATH}/export_${DB_USER}_$(date '+%Y%m%d%H%M%S').csv"
 
@@ -103,14 +103,14 @@ exit;
 SQL
 }
 
-daemonize() {
+daemonize() { # 守护进程模式
   log INFO "Starting daemon mode"
   nohup "$0" --run "${DB_USER}" "${DB_PASS}" "${DB_SID}" "${SQL_FILE}" "${WORK_PATH}" \
     > /dev/null 2>&1 &
   log INFO "Daemon started with PID $!"
 }
 
-parse_args() {
+parse_args() { # 解析入参
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -d|--daemon)
@@ -143,7 +143,7 @@ parse_args() {
   WORK_PATH="$5"
 }
 
-run_main() {
+run_main() { # 主流程
   mkdir -p "${WORK_PATH}"
   local ts
   ts="$(date '+%Y%m%d%H%M%S')"
@@ -165,7 +165,7 @@ run_main() {
   log INFO "All operations completed successfully"
 }
 
-main() {
+main() { # 入口
   parse_args "$@"
 
   if [[ "${DAEMON_MODE}" == "true" && "${INTERNAL_RUN}" == "false" ]]; then
