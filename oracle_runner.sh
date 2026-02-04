@@ -16,10 +16,15 @@ NLS_LANG_DEFAULT="AMERICAN_AMERICA.UTF8" # 默认字符集
 usage() { # 使用说明
   cat <<'USAGE'
 Usage:
-  oracle_runner.sh [-d|--daemon] [db_user] [db_pass] [db_sid] [sql_file] [work_path]
+  oracle_runner.sh [-d|--daemon] [-u user] [-p pass] [-s sid] [-f sql_file] [-w work_path]
 
 Options:
   -d, --daemon   Run in daemon mode (background).
+  -u, --user     DB user.
+  -p, --pass     DB password.
+  -s, --sid      DB SID/service name.
+  -f, --file     SQL file path.
+  -w, --work     Work path.
 
 Notes:
   - Unspecified parameters use defaults defined in the script.
@@ -154,7 +159,7 @@ daemonize() { # 守护进程模式
 
 parse_args() { # 解析入参
   local parsed
-  if ! parsed=$(getopt -o dh --long daemon,run,help -n "$0" -- "$@"); then
+  if ! parsed=$(getopt -o dhu:p:s:f:w: --long daemon,run,help,user:,pass:,sid:,file:,work: -n "$0" -- "$@"); then
     usage
     exit 1
   fi
@@ -164,6 +169,26 @@ parse_args() { # 解析入参
       -d|--daemon)
         DAEMON_MODE="true"
         shift
+        ;;
+      -u|--user)
+        DB_USER="$2"
+        shift 2
+        ;;
+      -p|--pass)
+        DB_PASS="$2"
+        shift 2
+        ;;
+      -s|--sid)
+        DB_SID="$2"
+        shift 2
+        ;;
+      -f|--file)
+        SQL_FILE="$2"
+        shift 2
+        ;;
+      -w|--work)
+        WORK_PATH="$2"
+        shift 2
         ;;
       --run)
         INTERNAL_RUN="true"
@@ -176,7 +201,7 @@ parse_args() { # 解析入参
       --)
         shift
         break
-        ;;
+      ;;
       *)
         usage
         exit 1
@@ -184,16 +209,10 @@ parse_args() { # 解析入参
     esac
   done
 
-  if [[ $# -gt 5 ]]; then
+  if [[ $# -gt 0 ]]; then
     usage
     exit 1
   fi
-
-  DB_USER="${1:-$DB_USER}"
-  DB_PASS="${2:-$DB_PASS}"
-  DB_SID="${3:-$DB_SID}"
-  SQL_FILE="${4:-$SQL_FILE}"
-  WORK_PATH="${5:-$WORK_PATH}"
 }
 
 run_main() { # 主流程
