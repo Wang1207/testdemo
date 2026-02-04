@@ -8,6 +8,7 @@ SQL_FILE="" # SQL 文件路径
 WORK_PATH="/sumapps/summit/backup/$(date '+%Y%m%d')" # 工作路径
 DAEMON_MODE="false" # 是否守护进程模式
 INTERNAL_RUN="false" # 内部执行标记
+AUTO_DETECT_NLS="true" # 是否自动检测字符集
 
 ORACLE_HOME_DEFAULT="/opt/oracle" # 默认 ORACLE_HOME
 NLS_LANG_DEFAULT="AMERICAN_AMERICA.AL32UTF8" # 默认字符集
@@ -41,6 +42,24 @@ setup_oracle_env() { # 设置 Oracle 环境变量
   export NLS_LANG="${NLS_LANG:-$nls_lang_input}"
   export PATH="$ORACLE_HOME/bin:$PATH"
   export LD_LIBRARY_PATH="$ORACLE_HOME/lib:${LD_LIBRARY_PATH:-}"
+}
+
+detect_nls_lang() { # 自动检测数据库字符集并设置 NLS_LANG
+  local db_charset
+  db_charset="$(
+    sqlplus -s "${DB_USER}/${DB_PASS}@${DB_SID}" <<'SQL'
+set heading off feedback off pagesize 0 verify off echo off
+select value from nls_database_parameters where parameter='NLS_CHARACTERSET';
+exit;
+SQL
+  )"
+  db_charset="$(echo "${db_charset}" | tr -d '[:space:]')"
+  if [[ -n "${db_charset}" ]]; then
+    export NLS_LANG="AMERICAN_AMERICA.${db_charset}"
+    log INFO "Detected NLS_CHARACTERSET: ${db_charset}, set NLS_LANG=${NLS_LANG}"
+  else
+    log WARN "Failed to detect NLS_CHARACTERSET, keep NLS_LANG=${NLS_LANG}"
+  fi
 }
 
 check_connection() { # 账号密码校验
@@ -155,6 +174,9 @@ run_main() { # 主流程
   exec > >(tee -a "${LOG_FILE}") 2>&1
 
   setup_oracle_env "$ORACLE_HOME_DEFAULT" "$NLS_LANG_DEFAULT"
+  if [[ "${AUTO_DETECT_NLS}" == "true" ]]; then
+    detect_nls_lang
+  fi
   log INFO "Log file: ${LOG_FILE}"
   log INFO "Oracle SID: ${DB_SID}"
   log INFO "SQL file: ${SQL_FILE}"
