@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_USER="" # 数据库用户
-DB_PASS="" # 数据库密码
-DB_SID="" # 数据库 SID/服务名
+DB_USER="hxbprod" # 数据库用户
+DB_PASS="123456" # 数据库密码
+DB_SID="SUMMIT" # 数据库 SID/服务名
 SQL_FILE="" # SQL 文件路径
-WORK_PATH="" # 工作路径
+WORK_PATH="/sumapps/summit/backup/$(date '+%Y%m%d')" # 工作路径
 DAEMON_MODE="false" # 是否守护进程模式
 INTERNAL_RUN="false" # 内部执行标记
 
@@ -136,11 +136,11 @@ parse_args() { # 解析入参
     exit 1
   fi
 
-  DB_USER="$1"
-  DB_PASS="$2"
-  DB_SID="$3"
-  SQL_FILE="$4"
-  WORK_PATH="$5"
+  DB_USER="${1:-$DB_USER}"
+  DB_PASS="${2:-$DB_PASS}"
+  DB_SID="${3:-$DB_SID}"
+  SQL_FILE="${4:-$SQL_FILE}"
+  WORK_PATH="${5:-$WORK_PATH}"
 }
 
 run_main() { # 主流程
@@ -173,9 +173,16 @@ main() { # 入口
     exit 0
   fi
 
+  if [[ -z "${SQL_FILE}" ]]; then
+    SQL_FILE="${WORK_PATH}/default_query.sql"
+  fi
+
   if [[ ! -f "${SQL_FILE}" ]]; then
-    log ERROR "SQL file not found: ${SQL_FILE}"
-    exit 1
+    mkdir -p "${WORK_PATH}"
+    cat <<'SQL' > "${SQL_FILE}"
+select count(1) from dmenv;
+SQL
+    log INFO "SQL file not found, created default: ${SQL_FILE}"
   fi
 
   run_main
